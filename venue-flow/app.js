@@ -61,18 +61,30 @@ function showToast(msg, type = 'info', duration = 4000) {
 }
 
 // ============================================================
-// TAB SWITCHING
+// TAB SWITCHING  (click + keyboard arrow navigation)
 // ============================================================
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    btn.setAttribute('aria-selected', 'true');
-    const panel = document.getElementById('panel-' + btn.dataset.tab);
-    if (panel) panel.classList.add('active');
-    // Lazy render map
-    if (btn.dataset.tab === 'map' && crowdData) renderFullMap(crowdData);
+const tabBtns = Array.from(document.querySelectorAll('.tab-btn'));
+
+function activateTab(btn) {
+  tabBtns.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); b.tabIndex = -1; });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  btn.setAttribute('aria-selected', 'true');
+  btn.tabIndex = 0;
+  btn.focus();
+  const panel = document.getElementById('panel-' + btn.dataset.tab);
+  if (panel) panel.classList.add('active');
+  if (btn.dataset.tab === 'map' && crowdData) renderFullMap(crowdData);
+}
+
+tabBtns.forEach((btn, idx) => {
+  btn.tabIndex = idx === 0 ? 0 : -1;
+  btn.addEventListener('click', () => activateTab(btn));
+  btn.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight') { activateTab(tabBtns[(idx + 1) % tabBtns.length]); e.preventDefault(); }
+    if (e.key === 'ArrowLeft')  { activateTab(tabBtns[(idx - 1 + tabBtns.length) % tabBtns.length]); e.preventDefault(); }
+    if (e.key === 'Home') { activateTab(tabBtns[0]); e.preventDefault(); }
+    if (e.key === 'End')  { activateTab(tabBtns[tabBtns.length - 1]); e.preventDefault(); }
   });
 });
 
@@ -344,9 +356,14 @@ function appendMsg(text, role) {
 chatSend.addEventListener('click', () => sendChat(chatInput.value));
 chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(chatInput.value); });
 
-// Quick action chips
+// Quick action chips (now semantic <button> elements)
 document.querySelectorAll('.chip[data-msg]').forEach(chip => {
-  chip.addEventListener('click', () => sendChat(chip.dataset.msg));
+  chip.addEventListener('click', () => {
+    sendChat(chip.dataset.msg);
+    // Switch to concierge tab if not already active
+    const conciergeBtn = document.querySelector('[data-tab="concierge"]');
+    if (conciergeBtn && !conciergeBtn.classList.contains('active')) activateTab(conciergeBtn);
+  });
 });
 
 // ============================================================
