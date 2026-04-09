@@ -35,4 +35,5 @@ externalPort = 80
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["sh", "-c", "python app.py"]
+run = ["sh", "-c", "cd venue-flow && gunicorn --bind=0.0.0.0:5000 --reuse-port app:app"]
+build = ["sh", "-c", "pip install -r venue-flow/requirements.txt"]
