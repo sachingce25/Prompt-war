@@ -4,18 +4,25 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="VenueFlow — AI-Powered Smart Venue Assistant for real-time crowd navigation, wait times, and AI concierge at Apex Arena.">
+  <meta name="theme-color" content="#050810">
   <title>VenueFlow — Smart Venue Assistant</title>
+  <!-- Preconnect to Google Fonts to cut render-blocking latency -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏟️</text></svg>">
 </head>
 <body>
+
+<!-- Skip navigation link for keyboard / screen reader users -->
+<a class="skip-link" href="#main-content">Skip to main content</a>
 
 <div class="aurora-bg" aria-hidden="true"></div>
 
 <!-- ============ TOP BAR ============ -->
 <header class="topbar" role="banner">
   <div class="topbar-logo">
-    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true" focusable="false">
       <circle cx="16" cy="16" r="14" stroke="url(#lg)" stroke-width="2.5"/>
       <path d="M10 20 L16 10 L22 20" stroke="url(#lg)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
       <defs><linearGradient id="lg" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#4361ff"/><stop offset="1" stop-color="#00d4ff"/></linearGradient></defs>
@@ -23,59 +30,75 @@
     <span>VenueFlow</span>
   </div>
   <div style="display:flex;align-items:center;gap:16px;">
-    <span style="color:var(--muted);font-size:.8rem;">Apex Arena — Championship Finals</span>
-    <div class="live-badge"><span class="live-dot"></span> LIVE</div>
-    <div class="notif-bell" id="notifBell" role="button" aria-label="Notifications" tabindex="0">
-      🔔<span class="notif-badge" id="notifCount">3</span>
-    </div>
+    <span style="color:var(--muted);font-size:.8rem;" aria-label="Current event: Apex Arena — Championship Finals">Apex Arena — Championship Finals</span>
+    <div class="live-badge" role="status" aria-label="Live data feed active"><span class="live-dot" aria-hidden="true"></span> LIVE</div>
+    <button class="notif-bell" id="notifBell" aria-label="Notifications — 3 unread" aria-haspopup="true">
+      🔔<span class="notif-badge" id="notifCount" aria-hidden="true">3</span>
+    </button>
   </div>
 </header>
 
 <!-- ============ TAB BAR ============ -->
 <nav class="tab-bar" role="tablist" aria-label="Main navigation">
-  <button class="tab-btn active" data-tab="dashboard" role="tab" aria-selected="true" aria-controls="panel-dashboard">📊 Dashboard</button>
-  <button class="tab-btn" data-tab="map" role="tab" aria-selected="false" aria-controls="panel-map">🗺️ Venue Map</button>
-  <button class="tab-btn" data-tab="concierge" role="tab" aria-selected="false" aria-controls="panel-concierge">🤖 AI Concierge</button>
-  <button class="tab-btn" data-tab="parking" role="tab" aria-selected="false" aria-controls="panel-parking">🅿️ Parking</button>
-  <button class="tab-btn" data-tab="planner" role="tab" aria-selected="false" aria-controls="panel-planner">📋 My Plan</button>
+  <button class="tab-btn active" data-tab="dashboard" role="tab" aria-selected="true" aria-controls="panel-dashboard" id="tab-dashboard">📊 Dashboard</button>
+  <button class="tab-btn" data-tab="map" role="tab" aria-selected="false" aria-controls="panel-map" id="tab-map">🗺️ Venue Map</button>
+  <button class="tab-btn" data-tab="concierge" role="tab" aria-selected="false" aria-controls="panel-concierge" id="tab-concierge">🤖 AI Concierge</button>
+  <button class="tab-btn" data-tab="parking" role="tab" aria-selected="false" aria-controls="panel-parking" id="tab-parking">🅿️ Parking</button>
+  <button class="tab-btn" data-tab="planner" role="tab" aria-selected="false" aria-controls="panel-planner" id="tab-planner">📋 My Plan</button>
 </nav>
 
-<main class="main-content">
+<main class="main-content" id="main-content">
 
 <!-- ============ DASHBOARD ============ -->
-<section class="tab-panel active" id="panel-dashboard" role="tabpanel">
+<section class="tab-panel active" id="panel-dashboard" role="tabpanel" aria-labelledby="tab-dashboard">
   <div class="stat-grid" id="statGrid">
-    <div class="stat-card glass"><div class="stat-label">Avg Crowd</div><div class="stat-value" id="avgCrowd">—</div><div class="stat-sub">across all zones</div></div>
-    <div class="stat-card glass"><div class="stat-label">Fastest Gate</div><div class="stat-value" id="fastGate">—</div><div class="stat-sub" id="fastGateSub">loading</div></div>
-    <div class="stat-card glass"><div class="stat-label">Active Alerts</div><div class="stat-value" id="alertCount">—</div><div class="stat-sub">low-wait alerts</div></div>
-    <div class="stat-card glass"><div class="stat-label">Attendance</div><div class="stat-value">52K</div><div class="stat-sub">of 60,000 capacity</div></div>
+    <div class="stat-card glass" role="region" aria-label="Average crowd density">
+      <div class="stat-label">Avg Crowd</div>
+      <div class="stat-value" id="avgCrowd" aria-live="polite" aria-atomic="true">—</div>
+      <div class="stat-sub">across all zones</div>
+    </div>
+    <div class="stat-card glass" role="region" aria-label="Fastest gate">
+      <div class="stat-label">Fastest Gate</div>
+      <div class="stat-value" id="fastGate" aria-live="polite" aria-atomic="true">—</div>
+      <div class="stat-sub" id="fastGateSub">loading</div>
+    </div>
+    <div class="stat-card glass" role="region" aria-label="Active low-wait alerts">
+      <div class="stat-label">Active Alerts</div>
+      <div class="stat-value" id="alertCount" aria-live="polite" aria-atomic="true">—</div>
+      <div class="stat-sub">low-wait alerts</div>
+    </div>
+    <div class="stat-card glass" role="region" aria-label="Attendance">
+      <div class="stat-label">Attendance</div>
+      <div class="stat-value">52K</div>
+      <div class="stat-sub">of 60,000 capacity</div>
+    </div>
   </div>
   <div class="dash-grid">
     <div>
-      <div class="section-title">🏟️ Crowd Density</div>
-      <div class="map-container glass" style="padding:20px;" id="dashMap"></div>
+      <h2 class="section-title">🏟️ Crowd Density</h2>
+      <div class="map-container glass" style="padding:20px;" id="dashMap" aria-label="Crowd density map"></div>
     </div>
     <div>
-      <div class="section-title">⏱️ Wait Times</div>
-      <div id="dashWaits" class="wait-list"></div>
+      <h2 class="section-title">⏱️ Wait Times</h2>
+      <div id="dashWaits" class="wait-list" role="list" aria-label="Current facility wait times" aria-live="polite"></div>
     </div>
   </div>
 </section>
 
 <!-- ============ VENUE MAP ============ -->
-<section class="tab-panel" id="panel-map" role="tabpanel">
+<section class="tab-panel" id="panel-map" role="tabpanel" aria-labelledby="tab-map">
   <div class="map-container" id="fullMap" style="background:rgba(13,19,37,0.4);border-radius:var(--radius);padding:20px;position:relative;">
-    <div id="mapSvgContainer"></div>
-    <div class="map-legend glass" id="mapLegend">
+    <div id="mapSvgContainer" aria-label="Interactive venue map — click a section for details"></div>
+    <div class="map-legend glass" id="mapLegend" aria-label="Map legend" role="note">
       <div style="font-weight:700;margin-bottom:10px;font-size:.85rem;">Zone Legend</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--cool)"></div> Low (&lt;30%)</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--warm)"></div> Moderate (30-60%)</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--hot)"></div> High (&gt;60%)</div>
-      <div class="legend-item" style="margin-top:8px;"><div class="legend-dot" style="background:var(--accent)"></div> Entry Gate</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#a855f7"></div> Restroom</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--warm)"></div> Food Stall</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--cool)" aria-hidden="true"></div> Low (&lt;30%)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--warm)" aria-hidden="true"></div> Moderate (30–60%)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--hot)" aria-hidden="true"></div> High (&gt;60%)</div>
+      <div class="legend-item" style="margin-top:8px;"><div class="legend-dot" style="background:var(--accent)" aria-hidden="true"></div> Entry Gate</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#a855f7" aria-hidden="true"></div> Restroom</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--warm)" aria-hidden="true"></div> Food Stall</div>
     </div>
-    <div class="map-popup glass" id="mapPopup">
+    <div class="map-popup glass" id="mapPopup" role="tooltip" aria-live="polite">
       <h4 id="popupTitle">Section A</h4>
       <div class="popup-row"><span>Crowd Level</span><span id="popupCrowd">72%</span></div>
       <div class="popup-row"><span>Status</span><span id="popupStatus">High</span></div>
@@ -86,57 +109,58 @@
 </section>
 
 <!-- ============ AI CONCIERGE ============ -->
-<section class="tab-panel" id="panel-concierge" role="tabpanel">
+<section class="tab-panel" id="panel-concierge" role="tabpanel" aria-labelledby="tab-concierge">
   <div class="chat-layout">
     <div class="chat-main glass">
       <div class="chat-header">
-        <h3>🤖 AI Concierge</h3>
-        <span class="gemini-badge">✨ Powered by Gemini</span>
+        <h2 style="font-size:1.1rem;">🤖 AI Concierge</h2>
+        <span class="gemini-badge" aria-label="Powered by Google Gemini AI">✨ Powered by Gemini</span>
       </div>
-      <div class="chat-messages" id="chatMessages" role="log" aria-live="polite">
-        <div class="msg ai">👋 Welcome to Apex Arena! I'm your AI concierge. Ask me anything — restrooms, food, crowd levels, directions, or seat upgrades!</div>
+      <div class="chat-messages" id="chatMessages" role="log" aria-live="polite" aria-label="Conversation with AI concierge">
+        <div class="msg ai" role="article" aria-label="AI: Welcome message">👋 Welcome to Apex Arena! I'm your AI concierge. Ask me anything — restrooms, food, crowd levels, directions, or seat upgrades!</div>
       </div>
-      <div class="chat-input-area">
-        <input type="text" id="chatInput" placeholder="Ask about the venue..." aria-label="Chat message" maxlength="500">
+      <div class="chat-input-area" role="form" aria-label="Send a message to the AI concierge">
+        <label for="chatInput" class="sr-only">Your message</label>
+        <input type="text" id="chatInput" placeholder="Ask about the venue…" aria-label="Type your message here" maxlength="500" autocomplete="off">
         <button id="chatSend" aria-label="Send message">Send</button>
       </div>
     </div>
-    <div class="chat-sidebar">
+    <aside class="chat-sidebar" aria-label="Quick action suggestions">
       <div style="font-weight:700;font-size:.85rem;margin-bottom:4px;">💡 Quick Actions</div>
-      <div class="chip" data-msg="Where's the nearest open restroom?">🚻 Nearest restroom</div>
-      <div class="chip" data-msg="What food stalls are open and which has shortest wait?">🍔 Best food stall</div>
-      <div class="chip" data-msg="What's the fastest exit route from the venue?">🚪 Exit route</div>
-      <div class="chip" data-msg="Are there any seat upgrades available?">💺 Seat upgrade</div>
-      <div class="chip" data-msg="What's the current match schedule?">📅 Match schedule</div>
-      <div class="chip" data-msg="Which section is least crowded right now?">📊 Crowd check</div>
-    </div>
+      <button class="chip" data-msg="Where's the nearest open restroom?" tabindex="0">🚻 Nearest restroom</button>
+      <button class="chip" data-msg="What food stalls are open and which has shortest wait?" tabindex="0">🍔 Best food stall</button>
+      <button class="chip" data-msg="What's the fastest exit route from the venue?" tabindex="0">🚪 Exit route</button>
+      <button class="chip" data-msg="Are there any seat upgrades available?" tabindex="0">💺 Seat upgrade</button>
+      <button class="chip" data-msg="What's the current match schedule?" tabindex="0">📅 Match schedule</button>
+      <button class="chip" data-msg="Which section is least crowded right now?" tabindex="0">📊 Crowd check</button>
+    </aside>
   </div>
 </section>
 
 <!-- ============ PARKING ============ -->
-<section class="tab-panel" id="panel-parking" role="tabpanel">
-  <div class="section-title">🅿️ Parking Zone Occupancy</div>
-  <div class="parking-grid" id="parkingGrid"></div>
-  <div class="section-title">🚗 Staggered Exit Plan</div>
-  <div class="exit-timeline glass" id="exitTimeline"></div>
-  <div class="section-title">📱 Your Parking Pass</div>
+<section class="tab-panel" id="panel-parking" role="tabpanel" aria-labelledby="tab-parking">
+  <h2 class="section-title">🅿️ Parking Zone Occupancy</h2>
+  <div class="parking-grid" id="parkingGrid" role="list" aria-label="Parking zone occupancy"></div>
+  <h2 class="section-title">🚗 Staggered Exit Plan</h2>
+  <div class="exit-timeline glass" id="exitTimeline" role="list" aria-label="Suggested exit order by parking zone"></div>
+  <h2 class="section-title">📱 Your Parking Pass</h2>
   <div class="qr-section glass" style="padding:24px;">
     <p style="color:var(--muted);font-size:.85rem;margin-bottom:8px;">Zone D — VIP Pre-booked Slot #D-147</p>
-    <div class="qr-box"><canvas id="qrCanvas" width="156" height="156"></canvas></div>
+    <div class="qr-box" role="img" aria-label="QR code for Zone D VIP parking pass, slot D-147"><canvas id="qrCanvas" width="156" height="156"></canvas></div>
     <p style="font-size:.75rem;color:var(--muted);margin-top:8px;">Scan at exit gate for express departure</p>
   </div>
 </section>
 
 <!-- ============ MY PLAN ============ -->
-<section class="tab-panel" id="panel-planner" role="tabpanel">
+<section class="tab-panel" id="panel-planner" role="tabpanel" aria-labelledby="tab-planner">
   <div class="plan-layout">
     <div>
-      <div class="section-title">📋 Your Event Timeline</div>
-      <div class="timeline" id="timeline"></div>
+      <h2 class="section-title">📋 Your Event Timeline</h2>
+      <div class="timeline" id="timeline" role="list" aria-label="Your event timeline"></div>
     </div>
-    <div class="plan-sidebar">
-      <div class="add-reminder-form glass">
-        <h4>➕ Add Reminder</h4>
+    <aside class="plan-sidebar">
+      <div class="add-reminder-form glass" role="form" aria-label="Add a reminder to your timeline">
+        <h3 style="font-family:'Outfit',sans-serif;font-weight:700;margin-bottom:14px;">➕ Add Reminder</h3>
         <div class="form-group">
           <label for="reminderType">Type</label>
           <select id="reminderType">
@@ -160,15 +184,15 @@
         <div style="font-weight:700;font-size:.85rem;margin-bottom:12px;">🔥 Seat Upgrade Suggestion</div>
         <p style="font-size:.8rem;color:var(--muted);line-height:1.5;">Section F has low occupancy. Premium seats available from <strong style="color:var(--cool);">$25</strong>. Ask the AI Concierge or visit Guest Services at Gate 1.</p>
       </div>
-    </div>
+    </aside>
   </div>
 </section>
 
 </main>
 
 <!-- Toast Container -->
-<div class="toast-container" id="toastContainer" aria-live="assertive"></div>
+<div class="toast-container" id="toastContainer" aria-live="assertive" aria-atomic="false"></div>
 
-<script src="app.js"></script>
+<script src="app.js" defer></script>
 </body>
 </html>
