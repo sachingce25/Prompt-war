@@ -8,18 +8,76 @@ import json
 import time
 import random
 import re
-from datetime import datetime, timedelta
-from functools import lru_cache
+import logging
+from collections import defaultdict
+from datetime import datetime, timezone
 
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, g
 from flask_cors import CORS
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
+# ---------------------------------------------------------------------------
+# Logging Configuration
+# ---------------------------------------------------------------------------
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger("venueflow")
+
 app = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+# ---------------------------------------------------------------------------
+# Security Headers Middleware
+# ---------------------------------------------------------------------------
+
+@app.after_request
+def add_security_headers(response):
+    """Attach security headers to every response."""
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=()"
+    # Cache-Control for API routes
+    if request.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+# ---------------------------------------------------------------------------
+# Simple In-Memory Rate Limiter (per IP, per endpoint)
+# ---------------------------------------------------------------------------
+
+_rate_buckets: dict = defaultdict(list)
+RATE_LIMITS = {
+    "/api/chat": (10, 60),   # 10 requests per 60 seconds
+    "default":   (60, 60),   # 60 requests per 60 seconds
+}
+
+
+def _is_rate_limited(ip: str, path: str) -> bool:
+    limit, window = RATE_LIMITS.get(path, RATE_LIMITS["default"])
+    now = time.time()
+    key = f"{ip}:{path}"
+    _rate_buckets[key] = [t for t in _rate_buckets[key] if now - t < window]
+    if len(_rate_buckets[key]) >= limit:
+        return True
+    _rate_buckets[key].append(now)
+    return False
+
+
+@app.before_request
+def check_rate_limit():
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr or "unknown").split(",")[0].strip()
+    if _is_rate_limited(ip, request.path):
+        logger.warning("Rate limit hit: ip=%s path=%s", ip, request.path)
+        return jsonify({"error": "Too many requests. Please slow down."}), 429
+
 
 # ---------------------------------------------------------------------------
 # Gemini AI Configuration
@@ -64,17 +122,17 @@ RULES:
 - Be enthusiastic about the event experience
 - For directions, give clear landmark-based guidance
 - Never make up safety or emergency information — direct to staff
-"""
+""",
         )
+        logger.info("Gemini AI concierge initialized successfully.")
     except Exception as e:
-        print(f"[WARN] Gemini initialization failed: {e}")
+        logger.warning("Gemini initialization failed: %s", e)
         gemini_model = None
 
 # ---------------------------------------------------------------------------
 # Simulated Venue Data
 # ---------------------------------------------------------------------------
 
-# Base crowd density values per zone (0-100)
 BASE_CROWD_DATA = {
     "A": {"density": 72, "label": "Section A", "status": "high"},
     "B": {"density": 45, "label": "Section B", "status": "moderate"},
@@ -86,7 +144,6 @@ BASE_CROWD_DATA = {
     "H": {"density": 38, "label": "Section H", "status": "low"},
 }
 
-# Base wait times in minutes
 BASE_WAIT_TIMES = {
     "gates": [
         {"id": "gate1", "name": "Gate 1 (North)", "wait": 12, "status": "moderate"},
@@ -115,7 +172,6 @@ BASE_WAIT_TIMES = {
     ],
 }
 
-# Parking zone details
 PARKING_ZONES = {
     "A": {"name": "Zone A — North Lot", "capacity": 2000, "occupied": 1720, "gate": "Gate 1", "exit_time": 25},
     "B": {"name": "Zone B — East Lot", "capacity": 1500, "occupied": 1050, "gate": "Gate 2", "exit_time": 15},
@@ -123,19 +179,18 @@ PARKING_ZONES = {
     "D": {"name": "Zone D — West Lot (VIP)", "capacity": 1000, "occupied": 620, "gate": "Gate 4", "exit_time": 10},
 }
 
-# Cache for crowd data with TTL
-_crowd_cache = {"data": None, "timestamp": 0}
-_waits_cache = {"data": None, "timestamp": 0}
+_crowd_cache: dict = {"data": None, "timestamp": 0}
+_waits_cache: dict = {"data": None, "timestamp": 0}
 CACHE_TTL = 10  # seconds
 
 
-def _jitter(value, pct=0.15):
+def _jitter(value: float, pct: float = 0.15) -> int:
     """Add random variation to a numeric value (simulates live data)."""
     delta = int(value * pct)
     return max(0, min(100, value + random.randint(-delta, delta)))
 
 
-def _status_from_value(val, thresholds=(30, 60)):
+def _status_from_value(val: float, thresholds: tuple = (30, 60)) -> str:
     """Determine status label from a numeric value."""
     if val <= thresholds[0]:
         return "low"
@@ -144,7 +199,7 @@ def _status_from_value(val, thresholds=(30, 60)):
     return "high"
 
 
-def get_crowd_data():
+def get_crowd_data() -> dict:
     """Return crowd density data with simulated jitter, cached for CACHE_TTL seconds."""
     now = time.time()
     if _crowd_cache["data"] and (now - _crowd_cache["timestamp"]) < CACHE_TTL:
@@ -159,17 +214,13 @@ def get_crowd_data():
             "status": _status_from_value(density),
         }
 
-    # Find the least crowded gate
-    gate_recs = []
     min_density = min(d["density"] for d in data.values())
-    for zone, info in data.items():
-        if info["density"] == min_density:
-            gate_recs.append(zone)
+    least_crowded = [z for z, d in data.items() if d["density"] == min_density]
 
     result = {
         "zones": data,
-        "recommendation": f"Section {gate_recs[0]} is the least crowded right now" if gate_recs else "",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "recommendation": f"Section {least_crowded[0]} is the least crowded right now" if least_crowded else "",
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
     }
 
     _crowd_cache["data"] = result
@@ -177,13 +228,13 @@ def get_crowd_data():
     return result
 
 
-def get_wait_times():
+def get_wait_times() -> dict:
     """Return wait time data with simulated jitter, cached for CACHE_TTL seconds."""
     now = time.time()
     if _waits_cache["data"] and (now - _waits_cache["timestamp"]) < CACHE_TTL:
         return _waits_cache["data"]
 
-    result = {}
+    result: dict = {}
     for category, items in BASE_WAIT_TIMES.items():
         result[category] = []
         for item in items:
@@ -191,7 +242,6 @@ def get_wait_times():
             entry = {**item, "wait": wait, "status": _status_from_value(wait, (5, 12))}
             result[category].append(entry)
 
-    # Generate alerts for queues that drop below 5 min
     alerts = []
     for category, items in result.items():
         for item in items:
@@ -207,7 +257,7 @@ def get_wait_times():
     data = {
         "waits": result,
         "alerts": alerts,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
     }
 
     _waits_cache["data"] = data
@@ -215,9 +265,9 @@ def get_wait_times():
     return data
 
 
-def get_parking_data():
+def get_parking_data() -> dict:
     """Return parking zone data with jitter on occupancy."""
-    data = {}
+    data: dict = {}
     for zone, info in PARKING_ZONES.items():
         occupied = _jitter(info["occupied"], pct=0.03)
         occupied = min(occupied, info["capacity"])
@@ -240,7 +290,7 @@ def get_parking_data():
             {"zone": "A", "suggested_exit": "T+20 min", "reason": "High occupancy, north route"},
             {"zone": "C", "suggested_exit": "T+30 min", "reason": "Highest occupancy, allow clearance"},
         ],
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
     }
 
 
@@ -248,13 +298,12 @@ def get_parking_data():
 # Input Validation Helpers
 # ---------------------------------------------------------------------------
 
-def sanitize_input(text, max_length=1000):
+def sanitize_input(text, max_length: int = 1000) -> str:
     """Sanitize user input: strip, truncate, remove control characters."""
     if not isinstance(text, str):
         return ""
     text = text.strip()[:max_length]
-    # Remove control characters except newlines
-    text = re.sub(r'[\x00-\x09\x0b-\x1f\x7f]', '', text)
+    text = re.sub(r"[\x00-\x09\x0b-\x1f\x7f]", "", text)
     return text
 
 
@@ -270,12 +319,12 @@ def serve_index():
 
 @app.route("/health")
 def health_check():
-    """Health check endpoint for Cloud Run."""
+    """Health check endpoint."""
     return jsonify({
         "status": "ok",
         "service": "VenueFlow",
         "gemini_available": gemini_model is not None,
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
     })
 
 
@@ -285,7 +334,8 @@ def api_crowd():
     try:
         return jsonify(get_crowd_data())
     except Exception as e:
-        return jsonify({"error": "Failed to fetch crowd data", "details": str(e)}), 500
+        logger.error("Crowd data error: %s", e)
+        return jsonify({"error": "Failed to fetch crowd data"}), 500
 
 
 @app.route("/api/waits", methods=["GET"])
@@ -294,7 +344,8 @@ def api_waits():
     try:
         return jsonify(get_wait_times())
     except Exception as e:
-        return jsonify({"error": "Failed to fetch wait times", "details": str(e)}), 500
+        logger.error("Wait time error: %s", e)
+        return jsonify({"error": "Failed to fetch wait times"}), 500
 
 
 @app.route("/api/parking", methods=["GET"])
@@ -303,7 +354,8 @@ def api_parking():
     try:
         return jsonify(get_parking_data())
     except Exception as e:
-        return jsonify({"error": "Failed to fetch parking data", "details": str(e)}), 500
+        logger.error("Parking data error: %s", e)
+        return jsonify({"error": "Failed to fetch parking data"}), 500
 
 
 @app.route("/api/chat", methods=["POST"])
@@ -318,69 +370,75 @@ def api_chat():
         if not message:
             return jsonify({"error": "Message is required"}), 400
 
-        # Build venue context string for the AI
         crowd = get_crowd_data()
         waits = get_wait_times()
-        venue_context = data.get("venue_context", "")
+        venue_context = sanitize_input(data.get("venue_context", ""), 500)
 
-        context_block = f"""
-LIVE VENUE DATA (as of now):
-Crowd Density: {json.dumps({z: d['density'] for z, d in crowd['zones'].items()})}
-Gate Wait Times: {json.dumps([{'name': g['name'], 'wait': g['wait']} for g in waits['waits']['gates']])}
-Food Wait Times: {json.dumps([{'name': f['name'], 'wait': f['wait']} for f in waits['waits']['food']])}
-Restroom Wait Times: {json.dumps([{'name': r['name'], 'wait': r['wait']} for r in waits['waits']['restrooms']])}
-Recommendation: {crowd.get('recommendation', 'N/A')}
-Additional Context: {sanitize_input(venue_context, 500)}
-"""
+        context_block = (
+            f"LIVE VENUE DATA (as of now):\n"
+            f"Crowd Density: {json.dumps({z: d['density'] for z, d in crowd['zones'].items()})}\n"
+            f"Gate Wait Times: {json.dumps([{'name': g['name'], 'wait': g['wait']} for g in waits['waits']['gates']])}\n"
+            f"Food Wait Times: {json.dumps([{'name': f['name'], 'wait': f['wait']} for f in waits['waits']['food']])}\n"
+            f"Restroom Wait Times: {json.dumps([{'name': r['name'], 'wait': r['wait']} for r in waits['waits']['restrooms']])}\n"
+            f"Recommendation: {crowd.get('recommendation', 'N/A')}\n"
+            f"Additional Context: {venue_context}\n"
+        )
 
         if gemini_model:
-            # Use Gemini API
             prompt = f"{context_block}\n\nUser Question: {message}"
             response = gemini_model.generate_content(prompt)
             reply = response.text
+            source = "gemini"
         else:
-            # Fallback responses when Gemini is not configured
             reply = _fallback_response(message, crowd, waits)
+            source = "fallback"
+
+        logger.info("Chat handled [source=%s] len=%d", source, len(reply))
 
         return jsonify({
             "reply": reply,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-            "source": "gemini" if gemini_model else "fallback",
+            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
+            "source": source,
         })
 
     except Exception as e:
-        return jsonify({"error": "Chat request failed", "details": str(e)}), 500
+        logger.error("Chat error: %s", e)
+        return jsonify({"error": "Chat request failed"}), 500
 
 
-def _fallback_response(message, crowd, waits):
+def _fallback_response(message: str, crowd: dict, waits: dict) -> str:
     """Provide intelligent fallback responses when Gemini is not available."""
     msg = message.lower()
 
-    if any(word in msg for word in ["restroom", "bathroom", "toilet", "washroom"]):
+    if any(w in msg for w in ("restroom", "bathroom", "toilet", "washroom")):
         best = min(waits["waits"]["restrooms"], key=lambda x: x["wait"])
         return f"🚻 The nearest low-wait restroom is **{best['name']}** with only a {best['wait']}-minute wait. Head towards the section signs and follow the restroom icons!"
 
-    if any(word in msg for word in ["food", "eat", "hungry", "stall", "restaurant"]):
+    if any(w in msg for w in ("food", "eat", "hungry", "stall", "restaurant")):
         best = min(waits["waits"]["food"], key=lambda x: x["wait"])
         return f"🍔 **{best['name']}** has the shortest wait at {best['wait']} minutes! It's located in Section {best.get('section', 'N/A')}. Enjoy your meal!"
 
-    if any(word in msg for word in ["gate", "entry", "enter", "entrance"]):
+    if any(w in msg for w in ("gate", "entry", "enter", "entrance")):
         best = min(waits["waits"]["gates"], key=lambda x: x["wait"])
         return f"🚪 **{best['name']}** is your best bet with only a {best['wait']}-minute wait right now. Much faster than the other gates!"
 
-    if any(word in msg for word in ["crowd", "busy", "packed", "empty", "quiet"]):
+    if any(w in msg for w in ("crowd", "busy", "packed", "empty", "quiet")):
         least = min(crowd["zones"].items(), key=lambda x: x[1]["density"])
         most = max(crowd["zones"].items(), key=lambda x: x[1]["density"])
-        return f"📊 **Section {least[0]}** is the least crowded ({least[1]['density']}% full), while **Section {most[0]}** is the busiest ({most[1]['density']}%). I'd recommend heading to Section {least[0]}!"
+        return (
+            f"📊 **Section {least[0]}** is the least crowded ({least[1]['density']}% full), "
+            f"while **Section {most[0]}** is the busiest ({most[1]['density']}%). "
+            f"I'd recommend heading to Section {least[0]}!"
+        )
 
-    if any(word in msg for word in ["park", "exit", "leave", "car"]):
+    if any(w in msg for w in ("park", "exit", "leave", "car")):
         return "🅿️ For the fastest exit, use **Zone D (West Lot)** — it typically has the shortest exit time. Consider leaving 5 minutes before the final whistle to beat the rush!"
 
-    if any(word in msg for word in ["seat", "section", "upgrade", "view"]):
+    if any(w in msg for w in ("seat", "section", "upgrade", "view")):
         least = min(crowd["zones"].items(), key=lambda x: x[1]["density"])
         return f"💺 **Section {least[0]}** has great availability right now at only {least[1]['density']}% capacity. Check with guest services near any gate for upgrade options!"
 
-    if any(word in msg for word in ["help", "hi", "hello", "hey"]):
+    if any(w in msg for w in ("help", "hi", "hello", "hey")):
         return "👋 Welcome to **Apex Arena**! I'm your AI concierge. Ask me about restrooms, food stalls, crowd levels, parking, or anything else to make your experience amazing!"
 
     return "🏟️ I'm your Apex Arena concierge! Try asking me about restroom locations, food stall wait times, crowd levels, parking exits, or seat upgrades. I'm here to help you have the best experience!"
@@ -391,5 +449,6 @@ def _fallback_response(message, crowd, waits):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("FLASK_ENV", "production") == "development"
+    app.run(host="0.0.0.0", port=port, debug=debug)
