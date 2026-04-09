@@ -1,0 +1,9 @@
+============================= test session starts =============================
+platform win32 -- Python 3.10.11, pytest-9.0.3, pluggy-1.6.0
+rootdir: C:\Users\skg29\OneDrive\Desktop\prompt\venue-flow
+plugins: anyio-3.7.1
+collected 5 items
+
+test_app.py .....                                                        [100%]
+
+============================== 5 passed in 0.14s ==============================
