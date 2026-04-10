@@ -581,7 +581,7 @@ async function initGoogleMap() {
     };
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${cfg.api_key}&callback=__venueflowMapCallback`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${cfg.api_key}&callback=__venueflowMapCallback&loading=async&libraries=marker`;
     script.async = true;
     script.defer = true;
     document.head.appendChild(script);
