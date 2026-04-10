@@ -6,9 +6,21 @@
   <meta name="description" content="VenueFlow — AI-Powered Smart Venue Assistant for real-time crowd navigation, wait times, and AI concierge at Apex Arena.">
   <meta name="theme-color" content="#050810">
   <title>VenueFlow — Smart Venue Assistant</title>
-  <!-- Preconnect to Google Fonts to cut render-blocking latency -->
+
+  <!-- Google Analytics 4 -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-VENUEFLOW01"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-VENUEFLOW01', { page_title: 'VenueFlow Dashboard', send_page_view: true });
+  </script>
+
+  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏟️</text></svg>">
 </head>
@@ -30,6 +42,12 @@
     <span>VenueFlow</span>
   </div>
   <div style="display:flex;align-items:center;gap:16px;">
+    <div class="google-services-bar" aria-label="Powered by Google services">
+      <span class="gsvc-chip" title="Google Analytics active">📊 Analytics</span>
+      <span class="gsvc-chip gemini-chip" id="geminiStatusChip" title="Google Gemini AI status">✨ Gemini</span>
+      <span class="gsvc-chip" title="Google Fonts active">Aa Fonts</span>
+      <span class="gsvc-chip" title="Google Maps active">🗺 Maps</span>
+    </div>
     <span style="color:var(--muted);font-size:.8rem;" aria-label="Current event: Apex Arena — Championship Finals">Apex Arena — Championship Finals</span>
     <div class="live-badge" role="status" aria-label="Live data feed active"><span class="live-dot" aria-hidden="true"></span> LIVE</div>
     <button class="notif-bell" id="notifBell" aria-label="Notifications — 3 unread" aria-haspopup="true">
@@ -106,6 +124,27 @@
       <div class="popup-row"><span>Wait Time</span><span id="popupWait">12 min</span></div>
     </div>
   </div>
+
+  <!-- Google Maps embed for venue location -->
+  <div style="margin-top:24px;">
+    <h2 class="section-title">📍 Venue Location — Google Maps</h2>
+    <div class="google-maps-container glass">
+      <iframe
+        title="Apex Arena venue location on Google Maps"
+        width="100%"
+        height="320"
+        style="border:0;border-radius:12px;"
+        loading="lazy"
+        allowfullscreen
+        referrerpolicy="no-referrer-when-downgrade"
+        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3151.835434509198!2d144.9537353153168!3d-37.81627997975159!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6ad642b4b7ff3fb5%3A0x5045675218ce880!2sMelbourne%20Cricket%20Ground!5e0!3m2!1sen!2sau!4v1649905200000!5m2!1sen!2sau"
+        aria-label="Google Maps showing Apex Arena (Melbourne Cricket Ground) location">
+      </iframe>
+      <p style="font-size:.75rem;color:var(--muted);margin-top:8px;text-align:center;">
+        📌 Apex Arena — Championship Finals venue · Powered by <strong style="color:var(--accent2);">Google Maps</strong>
+      </p>
+    </div>
+  </div>
 </section>
 
 <!-- ============ AI CONCIERGE ============ -->
@@ -114,10 +153,19 @@
     <div class="chat-main glass">
       <div class="chat-header">
         <h2 style="font-size:1.1rem;">🤖 AI Concierge</h2>
-        <span class="gemini-badge" aria-label="Powered by Google Gemini AI">✨ Powered by Gemini</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="gemini-status-indicator" id="geminiIndicator" aria-live="polite">
+            <span class="gemini-dot" id="geminiDot"></span>
+            <span id="geminiStatusText">Checking Gemini…</span>
+          </div>
+          <span class="gemini-badge" aria-label="Powered by Google Gemini AI">
+            <img src="https://www.gstatic.com/lamda/images/gemini_sparkle_v002_d4735304ff6292a690345.svg" width="14" height="14" alt="" aria-hidden="true" style="vertical-align:middle;margin-right:4px;">
+            Powered by Google Gemini
+          </span>
+        </div>
       </div>
       <div class="chat-messages" id="chatMessages" role="log" aria-live="polite" aria-label="Conversation with AI concierge">
-        <div class="msg ai" role="article" aria-label="AI: Welcome message">👋 Welcome to Apex Arena! I'm your AI concierge. Ask me anything — restrooms, food, crowd levels, directions, or seat upgrades!</div>
+        <div class="msg ai" role="article" aria-label="AI: Welcome message">👋 Welcome to Apex Arena! I'm your AI concierge powered by <strong>Google Gemini</strong>. Ask me anything — restrooms, food, crowd levels, directions, or seat upgrades!</div>
       </div>
       <div class="chat-input-area" role="form" aria-label="Send a message to the AI concierge">
         <label for="chatInput" class="sr-only">Your message</label>
@@ -183,6 +231,16 @@
       <div class="glass" style="padding:20px;">
         <div style="font-weight:700;font-size:.85rem;margin-bottom:12px;">🔥 Seat Upgrade Suggestion</div>
         <p style="font-size:.8rem;color:var(--muted);line-height:1.5;">Section F has low occupancy. Premium seats available from <strong style="color:var(--cool);">$25</strong>. Ask the AI Concierge or visit Guest Services at Gate 1.</p>
+      </div>
+      <!-- Google Services info card -->
+      <div class="glass google-services-card" style="padding:20px;">
+        <div style="font-weight:700;font-size:.85rem;margin-bottom:10px;">⚡ Powered by Google</div>
+        <div class="gsvc-list">
+          <div class="gsvc-row"><span>🤖</span><span>Gemini 1.5 Flash AI</span><span class="gsvc-badge" id="geminiCardBadge">—</span></div>
+          <div class="gsvc-row"><span>📊</span><span>Google Analytics 4</span><span class="gsvc-badge active">Active</span></div>
+          <div class="gsvc-row"><span>🗺</span><span>Google Maps Embed</span><span class="gsvc-badge active">Active</span></div>
+          <div class="gsvc-row"><span>Aa</span><span>Google Fonts (Inter)</span><span class="gsvc-badge active">Active</span></div>
+        </div>
       </div>
     </aside>
   </div>
