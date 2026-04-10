@@ -80,6 +80,11 @@ def check_rate_limit():
 
 
 # ---------------------------------------------------------------------------
+# Google API Keys
+# ---------------------------------------------------------------------------
+GOOGLE_MAPS_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
+
+# ---------------------------------------------------------------------------
 # Gemini AI Configuration
 # ---------------------------------------------------------------------------
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
@@ -90,7 +95,7 @@ if GEMINI_API_KEY and GEMINI_API_KEY != "your_gemini_api_key_here":
         import google.generativeai as genai
         genai.configure(api_key=GEMINI_API_KEY)
         gemini_model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
+            model_name="gemini-2.0-flash",
             system_instruction="""You are VenueFlow AI Concierge — a friendly, knowledgeable assistant
 for a large-scale sports stadium called "Apex Arena". You help attendees navigate the venue,
 find amenities, and have the best possible experience.
@@ -328,15 +333,34 @@ def health_check():
     })
 
 
+@app.route("/api/maps-config", methods=["GET"])
+def api_maps_config():
+    """Return Google Maps API configuration for the frontend."""
+    has_key = bool(GOOGLE_MAPS_API_KEY)
+    return jsonify({
+        "api_key": GOOGLE_MAPS_API_KEY if has_key else None,
+        "enabled": has_key,
+        "venue": {
+            "name": "Apex Arena (Melbourne Cricket Ground)",
+            "lat": -37.81627997975159,
+            "lng": 144.9537353153168,
+            "zoom": 16,
+        },
+    })
+
+
 @app.route("/api/google-services", methods=["GET"])
 def api_google_services():
     """Return status of all Google services integrated into VenueFlow."""
+    gemini_active = gemini_model is not None
+    maps_active = bool(GOOGLE_MAPS_API_KEY)
+    active_count = sum([gemini_active, True, maps_active, True])  # Analytics + Fonts always active
     return jsonify({
         "services": [
             {
                 "name": "Google Gemini 1.5 Flash",
                 "category": "AI / Generative",
-                "status": "active" if gemini_model is not None else "unconfigured",
+                "status": "active" if gemini_active else "unconfigured",
                 "description": "Powers the AI Concierge for natural-language venue queries.",
                 "sdk": "google-generativeai",
             },
@@ -348,10 +372,10 @@ def api_google_services():
                 "measurement_id": "G-VENUEFLOW01",
             },
             {
-                "name": "Google Maps Embed API",
+                "name": "Google Maps JavaScript API",
                 "category": "Maps",
-                "status": "active",
-                "description": "Displays the venue location on the Venue Map tab.",
+                "status": "active" if maps_active else "unconfigured",
+                "description": "Interactive venue location map with custom marker on the Venue Map tab.",
             },
             {
                 "name": "Google Fonts (Inter + Outfit)",
@@ -361,7 +385,7 @@ def api_google_services():
             },
         ],
         "total": 4,
-        "active": 3 if gemini_model is None else 4,
+        "active": active_count,
         "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
     })
 
@@ -423,10 +447,15 @@ def api_chat():
         )
 
         if gemini_model:
-            prompt = f"{context_block}\n\nUser Question: {message}"
-            response = gemini_model.generate_content(prompt)
-            reply = response.text
-            source = "gemini"
+            try:
+                prompt = f"{context_block}\n\nUser Question: {message}"
+                response = gemini_model.generate_content(prompt)
+                reply = response.text
+                source = "gemini"
+            except Exception as gemini_err:
+                logger.warning("Gemini unavailable, using fallback: %s", gemini_err)
+                reply = _fallback_response(message, crowd, waits)
+                source = "fallback"
         else:
             reply = _fallback_response(message, crowd, waits)
             source = "fallback"
