@@ -9,6 +9,20 @@
 const API_BASE = '';
 const REFRESH_INTERVAL = 30000; // 30 seconds
 
+// ============================================================
+// GOOGLE ANALYTICS 4 — Event Tracking Helpers
+// ============================================================
+/**
+ * Fire a GA4 custom event. Gracefully no-ops if gtag is not loaded.
+ * @param {string} eventName - GA4 event name
+ * @param {Object} params    - Event parameters
+ */
+function trackEvent(eventName, params = {}) {
+  if (typeof gtag === 'function') {
+    gtag('event', eventName, params);
+  }
+}
+
 let crowdData = null;
 let waitData = null;
 let parkingData = null;
@@ -75,6 +89,8 @@ function activateTab(btn) {
   const panel = document.getElementById('panel-' + btn.dataset.tab);
   if (panel) panel.classList.add('active');
   if (btn.dataset.tab === 'map' && crowdData) renderFullMap(crowdData);
+  // GA4: track tab navigation
+  trackEvent('tab_view', { tab_name: btn.dataset.tab, event_category: 'navigation' });
 }
 
 tabBtns.forEach((btn, idx) => {
@@ -314,6 +330,8 @@ const chatMessages = document.getElementById('chatMessages');
 async function sendChat(msg) {
   if (!msg.trim() || chatBusy) return;
   chatBusy = true;
+  // GA4: track AI concierge usage
+  trackEvent('ai_concierge_query', { query_length: msg.length, event_category: 'engagement' });
   // User message
   appendMsg(msg, 'user');
   chatInput.value = '';
@@ -509,6 +527,40 @@ document.getElementById('notifBell').addEventListener('click', () => {
 });
 
 // ============================================================
+// GOOGLE SERVICES — Gemini Status Check
+// ============================================================
+async function checkGeminiStatus() {
+  try {
+    const r = await fetch(`${API_BASE}/api/google-services`);
+    const data = await r.json();
+    const gemini = data.services.find(s => s.name.includes('Gemini'));
+    const isActive = gemini && gemini.status === 'active';
+
+    // Update header chip
+    const chip = document.getElementById('geminiStatusChip');
+    if (chip) chip.classList.toggle('active', isActive);
+
+    // Update concierge indicator
+    const dot = document.getElementById('geminiDot');
+    const txt = document.getElementById('geminiStatusText');
+    if (dot) dot.classList.toggle('active', isActive);
+    if (txt) txt.textContent = isActive ? 'Gemini Active' : 'Fallback Mode';
+
+    // Update My Plan card badge
+    const badge = document.getElementById('geminiCardBadge');
+    if (badge) {
+      badge.textContent = isActive ? 'Active' : 'Set API Key';
+      badge.classList.toggle('active', isActive);
+    }
+
+    // GA4: track Google Services status
+    trackEvent('google_services_loaded', { gemini_active: isActive, total_active: data.active, event_category: 'google_services' });
+  } catch (e) {
+    console.warn('[VenueFlow] Could not fetch Google Services status:', e);
+  }
+}
+
+// ============================================================
 // INITIALIZATION
 // ============================================================
 (async function init() {
@@ -520,15 +572,18 @@ document.getElementById('notifBell').addEventListener('click', () => {
   `;
   document.getElementById('dashMap').innerHTML = `<div class="skeleton skeleton-block" style="height:300px;"></div>`;
 
-  await fetchAll();
+  // GA4: track app load
+  trackEvent('app_loaded', { event_category: 'system', app_name: 'VenueFlow' });
+
+  await Promise.all([fetchAll(), checkGeminiStatus()]);
   renderTimeline();
   drawQR();
 
   // Auto-refresh every 30 seconds
   setInterval(async () => {
     await fetchAll();
-    // Show a dot toast for refresh
     const now = new Date();
     console.log(`[VenueFlow] Data refreshed at ${now.toLocaleTimeString()}`);
+    trackEvent('data_refresh', { event_category: 'system', timestamp: now.toISOString() });
   }, REFRESH_INTERVAL);
 })();
