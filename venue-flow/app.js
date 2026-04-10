@@ -9,6 +9,11 @@
 const API_BASE = '';
 const REFRESH_INTERVAL = 30000; // 30 seconds
 
+// Match simulation state
+let matchMinute = 63;
+let countdownSec = 27 * 60; // 27 min remaining
+let prevAvgCrowd = null;
+
 // ============================================================
 // GOOGLE ANALYTICS 4 — Event Tracking Helpers
 // ============================================================
@@ -21,6 +26,74 @@ function trackEvent(eventName, params = {}) {
   if (typeof gtag === 'function') {
     gtag('event', eventName, params);
   }
+}
+
+// ============================================================
+// ANIMATED COUNTER
+// ============================================================
+/**
+ * Smoothly count from `from` to `to` and update element text.
+ * @param {HTMLElement} el - Target element
+ * @param {number} from - Starting value
+ * @param {number} to - End value
+ * @param {string} suffix - Appended string (e.g. '%', 'm', 'K')
+ * @param {number} duration - Animation duration in ms
+ */
+function animateCounter(el, from, to, suffix = '', duration = 900) {
+  if (!el) return;
+  const start = performance.now();
+  const diff = to - from;
+  function step(now) {
+    const elapsed = Math.min(now - start, duration);
+    const progress = elapsed / duration;
+    const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+    const val = Math.round(from + diff * eased);
+    el.textContent = val + suffix;
+    if (elapsed < duration) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+// ============================================================
+// MATCH CLOCK + COUNTDOWN TIMER
+// ============================================================
+function startMatchClock() {
+  setInterval(() => {
+    // Advance match minute (capped at 90+5)
+    if (matchMinute < 95) matchMinute++;
+    const minEl = document.getElementById('scoreMinute');
+    if (minEl) {
+      const half = matchMinute <= 45 ? '1st Half' : matchMinute <= 90 ? '2nd Half' : 'Extra Time';
+      minEl.textContent = `⏱ ${matchMinute}' · Championship Finals · ${half}`;
+    }
+
+    // Countdown to full time
+    if (countdownSec > 0) countdownSec--;
+    const m = Math.floor(countdownSec / 60);
+    const s = countdownSec % 60;
+    const cdMin = document.getElementById('cdMin');
+    const cdSec = document.getElementById('cdSec');
+    if (cdMin) cdMin.textContent = String(m).padStart(2, '0');
+    if (cdSec) cdSec.textContent = String(s).padStart(2, '0');
+
+    // When countdown hits 0 show full time
+    if (countdownSec === 0) {
+      const pill = document.getElementById('scoreStatusPill');
+      if (pill) pill.innerHTML = '🏁 FULL TIME';
+      const cdLabel = document.querySelector('.countdown-label');
+      if (cdLabel) cdLabel.textContent = '🏁 Match Ended';
+    }
+  }, 1000);
+}
+
+// ============================================================
+// TICKER SEAMLESS LOOP
+// ============================================================
+function initTicker() {
+  const inner = document.getElementById('tickerInner');
+  if (!inner) return;
+  // Duplicate content for seamless loop
+  inner.innerHTML += inner.innerHTML;
 }
 
 let crowdData = null;
@@ -150,16 +223,37 @@ function renderDashboard() {
   const zones = crowdData.zones;
   const densities = Object.values(zones).map(z => z.density);
   const avg = Math.round(densities.reduce((a, b) => a + b, 0) / densities.length);
-  document.getElementById('avgCrowd').textContent = avg + '%';
+
+  // Animated counter for avg crowd
+  const avgEl = document.getElementById('avgCrowd');
+  animateCounter(avgEl, prevAvgCrowd !== null ? prevAvgCrowd : 0, avg, '%');
+
+  // Trend badge
+  const trendEl = document.getElementById('crowdTrend');
+  if (trendEl && prevAvgCrowd !== null) {
+    const diff = avg - prevAvgCrowd;
+    if (Math.abs(diff) >= 1) {
+      trendEl.className = `stat-trend ${diff > 0 ? 'up' : 'down'}`;
+      trendEl.textContent = `${diff > 0 ? '↑' : '↓'} ${Math.abs(diff)}% since last refresh`;
+    } else {
+      trendEl.className = 'stat-trend neutral';
+      trendEl.textContent = '→ Steady';
+    }
+  }
+  prevAvgCrowd = avg;
 
   // Fastest gate from wait data
   if (waitData) {
     const gates = waitData.waits.gates;
     const best = gates.reduce((a, b) => a.wait < b.wait ? a : b);
-    document.getElementById('fastGate').textContent = best.wait + 'm';
+    animateCounter(document.getElementById('fastGate'), 0, best.wait, 'm', 700);
     document.getElementById('fastGateSub').textContent = best.name;
-    document.getElementById('alertCount').textContent = waitData.alerts ? waitData.alerts.length : '0';
+    const alerts = waitData.alerts ? waitData.alerts.length : 0;
+    animateCounter(document.getElementById('alertCount'), 0, alerts, '', 600);
   }
+
+  // Animated attendance counter
+  animateCounter(document.getElementById('attendanceVal'), 0, 52, 'K', 1200);
 
   // Render mini map in dashboard
   renderMiniMap(zones);
@@ -363,11 +457,36 @@ async function sendChat(msg) {
 }
 
 function appendMsg(text, role) {
+  const wrap = document.createElement('div');
+  wrap.className = `msg-wrap ${role}`;
+
   const d = document.createElement('div');
   d.className = `msg ${role}`;
-  // Simple markdown-like bold
   d.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  chatMessages.appendChild(d);
+  wrap.appendChild(d);
+
+  // Timestamp + copy (AI messages only)
+  const meta = document.createElement('div');
+  meta.className = 'msg-meta-row';
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  meta.innerHTML = `<span class="msg-time">${timeStr}</span>`;
+  if (role === 'ai') {
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'msg-copy-btn';
+    copyBtn.textContent = '⎘ Copy';
+    copyBtn.setAttribute('aria-label', 'Copy message to clipboard');
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(text).then(() => {
+        copyBtn.textContent = '✓ Copied';
+        setTimeout(() => { copyBtn.textContent = '⎘ Copy'; }, 1500);
+      });
+    });
+    meta.appendChild(copyBtn);
+  }
+  wrap.appendChild(meta);
+
+  chatMessages.appendChild(wrap);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
@@ -399,6 +518,10 @@ function renderParking() {
     const circumference = 2 * Math.PI * 50;
     const offset = circumference - (circumference * pct / 100);
 
+    const available = info.capacity - info.occupied;
+    const availClass = pct < 50 ? 'ok' : pct < 85 ? 'warn' : 'full';
+    const availText = pct >= 95 ? 'Almost Full' : `${available} spots free`;
+
     html += `<div class="parking-card glass">
       ${z === yourZone ? '<span class="zone-badge">YOUR ZONE</span>' : ''}
       <div class="ring-container">
@@ -416,6 +539,7 @@ function renderParking() {
       <div class="p-name">Zone ${z}</div>
       <div class="p-exit">Exit in ~${info.exit_time} min</div>
       <div style="font-size:.7rem;color:var(--muted);margin-top:4px;">${info.occupied}/${info.capacity} spaces</div>
+      <div class="park-avail ${availClass}">${availText}</div>
     </div>`;
   }
   grid.innerHTML = html;
@@ -638,6 +762,10 @@ async function checkGeminiStatus() {
 
   // GA4: track app load
   trackEvent('app_loaded', { event_category: 'system', app_name: 'VenueFlow' });
+
+  // Start ticker and match clock immediately
+  initTicker();
+  startMatchClock();
 
   await Promise.all([fetchAll(), checkGeminiStatus(), initGoogleMap()]);
   renderTimeline();
