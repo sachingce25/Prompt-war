@@ -276,3 +276,38 @@ def test_crowd_data_caching():
     first = get_crowd_data()
     second = get_crowd_data()
     assert first["timestamp"] == second["timestamp"]
+
+
+# ---------------------------------------------------------------------------
+# Google Services Endpoint
+# ---------------------------------------------------------------------------
+
+def test_google_services_endpoint(client):
+    """GET /api/google-services returns all 4 Google service entries."""
+    resp = client.get("/api/google-services")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert "services" in data
+    assert "total" in data
+    assert "active" in data
+    assert data["total"] == 4
+    assert len(data["services"]) == 4
+
+    names = [s["name"] for s in data["services"]]
+    assert any("Gemini" in n for n in names)
+    assert any("Analytics" in n for n in names)
+    assert any("Maps" in n for n in names)
+    assert any("Fonts" in n for n in names)
+
+    for svc in data["services"]:
+        assert "name" in svc
+        assert "category" in svc
+        assert "status" in svc
+        assert svc["status"] in ("active", "unconfigured")
+
+
+def test_google_services_security_headers(client):
+    """Google services endpoint also has security headers."""
+    resp = client.get("/api/google-services")
+    assert resp.headers.get("X-Content-Type-Options") == "nosniff"
+    assert "no-store" in resp.headers.get("Cache-Control", "")
