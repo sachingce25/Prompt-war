@@ -527,6 +527,70 @@ document.getElementById('notifBell').addEventListener('click', () => {
 });
 
 // ============================================================
+// GOOGLE SERVICES — Maps JavaScript API
+// ============================================================
+let googleMapInstance = null;
+
+async function initGoogleMap() {
+  try {
+    const r = await fetch(`${API_BASE}/api/maps-config`);
+    const cfg = await r.json();
+    if (!cfg.enabled || !cfg.api_key) {
+      document.getElementById('googleMap').innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:.85rem;">📍 Maps API key not configured</div>';
+      return;
+    }
+
+    // Dynamically load the Maps JS API
+    window.__venueflowMapCallback = function () {
+      const { lat, lng, zoom, name } = cfg.venue;
+      const mapDiv = document.getElementById('googleMap');
+      if (!mapDiv) return;
+
+      googleMapInstance = new google.maps.Map(mapDiv, {
+        center: { lat, lng },
+        zoom,
+        mapTypeId: 'satellite',
+        disableDefaultUI: false,
+        styles: [
+          { elementType: 'geometry', stylers: [{ color: '#0d1325' }] },
+          { elementType: 'labels.text.fill', stylers: [{ color: '#8a9bb0' }] },
+          { elementType: 'labels.text.stroke', stylers: [{ color: '#050810' }] },
+          { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#1a2540' }] },
+          { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0a1628' }] },
+        ],
+      });
+
+      new google.maps.Marker({
+        position: { lat, lng },
+        map: googleMapInstance,
+        title: name,
+        animation: google.maps.Animation.DROP,
+        label: { text: '🏟', fontSize: '24px' },
+      });
+
+      const infoWindow = new google.maps.InfoWindow({
+        content: `<div style="font-family:Inter,sans-serif;color:#0d1325;padding:4px 8px;">
+          <strong>Apex Arena</strong><br>Championship Finals Venue<br>
+          <span style="color:#4361ff;font-size:.75rem;">VenueFlow Smart Venue</span>
+        </div>`,
+      });
+      googleMapInstance.addListener('click', () => infoWindow.open(googleMapInstance));
+
+      trackEvent('google_map_loaded', { event_category: 'google_services', map_type: 'satellite' });
+    };
+
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${cfg.api_key}&callback=__venueflowMapCallback`;
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+  } catch (e) {
+    console.warn('[VenueFlow] Could not initialize Google Maps:', e);
+  }
+}
+
+// ============================================================
 // GOOGLE SERVICES — Gemini Status Check
 // ============================================================
 async function checkGeminiStatus() {
@@ -575,7 +639,7 @@ async function checkGeminiStatus() {
   // GA4: track app load
   trackEvent('app_loaded', { event_category: 'system', app_name: 'VenueFlow' });
 
-  await Promise.all([fetchAll(), checkGeminiStatus()]);
+  await Promise.all([fetchAll(), checkGeminiStatus(), initGoogleMap()]);
   renderTimeline();
   drawQR();
 
