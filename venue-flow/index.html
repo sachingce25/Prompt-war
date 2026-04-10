@@ -31,6 +31,23 @@
 
 <div class="aurora-bg" aria-hidden="true"></div>
 
+<!-- ============ LIVE ANNOUNCEMENTS TICKER ============ -->
+<div class="ticker-bar" role="marquee" aria-label="Live venue announcements">
+  <span class="ticker-label">LIVE</span>
+  <div class="ticker-track">
+    <div class="ticker-inner" id="tickerInner">
+      ⚡ Gate 2 East now open — fast entry &nbsp;·&nbsp;
+      🍔 Burger Blitz running 18-min wait — try Noodle Bar (6 min) &nbsp;·&nbsp;
+      🏟️ HALF TIME: Apex FC 2 — 1 City United · 47' &nbsp;·&nbsp;
+      🚗 Zone D VIP exit begins at 21:45 &nbsp;·&nbsp;
+      ⚠️ Section C approaching full capacity — consider Section F &nbsp;·&nbsp;
+      🎉 Free upgrade offer: Section F premium seats from $25 — ask Guest Services &nbsp;·&nbsp;
+      🌡️ Venue temp: 22°C · Clear skies expected &nbsp;·&nbsp;
+      📱 Scan QR at exit gate for express departure &nbsp;·&nbsp;
+    </div>
+  </div>
+</div>
+
 <!-- ============ TOP BAR ============ -->
 <header class="topbar" role="banner">
   <div class="topbar-logo">
@@ -71,24 +88,59 @@
 <section class="tab-panel active" id="panel-dashboard" role="tabpanel" aria-labelledby="tab-dashboard">
   <div class="stat-grid" id="statGrid">
     <div class="stat-card glass" role="region" aria-label="Average crowd density">
+      <div class="stat-icon" aria-hidden="true">👥</div>
       <div class="stat-label">Avg Crowd</div>
       <div class="stat-value" id="avgCrowd" aria-live="polite" aria-atomic="true">—</div>
       <div class="stat-sub">across all zones</div>
+      <div class="stat-trend" id="crowdTrend" aria-label="Crowd trend"></div>
     </div>
     <div class="stat-card glass" role="region" aria-label="Fastest gate">
+      <div class="stat-icon" aria-hidden="true">🚪</div>
       <div class="stat-label">Fastest Gate</div>
       <div class="stat-value" id="fastGate" aria-live="polite" aria-atomic="true">—</div>
       <div class="stat-sub" id="fastGateSub">loading</div>
     </div>
     <div class="stat-card glass" role="region" aria-label="Active low-wait alerts">
+      <div class="stat-icon" aria-hidden="true">⚡</div>
       <div class="stat-label">Active Alerts</div>
       <div class="stat-value" id="alertCount" aria-live="polite" aria-atomic="true">—</div>
-      <div class="stat-sub">low-wait alerts</div>
+      <div class="stat-sub">low-wait zones</div>
     </div>
     <div class="stat-card glass" role="region" aria-label="Attendance">
+      <div class="stat-icon" aria-hidden="true">🏟️</div>
       <div class="stat-label">Attendance</div>
-      <div class="stat-value">52K</div>
+      <div class="stat-value" id="attendanceVal">—</div>
       <div class="stat-sub">of 60,000 capacity</div>
+    </div>
+  </div>
+
+  <!-- Live Match + Countdown row -->
+  <div class="score-row">
+    <div class="score-widget glass" role="region" aria-label="Live match score">
+      <div class="score-status-pill" id="scoreStatusPill"><span class="live-dot" aria-hidden="true"></span> LIVE · 2nd Half</div>
+      <div class="score-teams">
+        <div class="score-team">
+          <div class="team-crest" aria-hidden="true">🦁</div>
+          <div class="team-name">Apex FC</div>
+          <div class="team-score" id="homeScore">2</div>
+        </div>
+        <div class="score-vs">VS</div>
+        <div class="score-team">
+          <div class="team-crest" aria-hidden="true">🐺</div>
+          <div class="team-name">City United</div>
+          <div class="team-score" id="awayScore">1</div>
+        </div>
+      </div>
+      <div class="score-meta" id="scoreMinute" aria-live="polite">⏱ 63' · Championship Finals</div>
+    </div>
+    <div class="countdown-widget glass" role="region" aria-label="Event countdown">
+      <div class="countdown-label">⏳ Estimated Full Time</div>
+      <div class="countdown-digits" id="countdownDigits" aria-live="polite" aria-atomic="true">
+        <div class="cd-unit"><span class="cd-num" id="cdMin">27</span><span class="cd-lbl">min</span></div>
+        <div class="cd-sep">:</div>
+        <div class="cd-unit"><span class="cd-num" id="cdSec">00</span><span class="cd-lbl">sec</span></div>
+      </div>
+      <div class="countdown-sub">Exit planning in progress — <strong style="color:var(--cool)">Zone D exits at 21:45</strong></div>
     </div>
   </div>
   <div class="dash-grid">
@@ -231,9 +283,9 @@
       <div class="glass google-services-card" style="padding:20px;">
         <div style="font-weight:700;font-size:.85rem;margin-bottom:10px;">⚡ Powered by Google</div>
         <div class="gsvc-list">
-          <div class="gsvc-row"><span>🤖</span><span>Gemini 1.5 Flash AI</span><span class="gsvc-badge" id="geminiCardBadge">—</span></div>
+          <div class="gsvc-row"><span>🤖</span><span>Gemini 2.0 Flash AI</span><span class="gsvc-badge" id="geminiCardBadge">—</span></div>
           <div class="gsvc-row"><span>📊</span><span>Google Analytics 4</span><span class="gsvc-badge active">Active</span></div>
-          <div class="gsvc-row"><span>🗺</span><span>Google Maps Embed</span><span class="gsvc-badge active">Active</span></div>
+          <div class="gsvc-row"><span>🗺</span><span>Google Maps JS API</span><span class="gsvc-badge active">Active</span></div>
           <div class="gsvc-row"><span>Aa</span><span>Google Fonts (Inter)</span><span class="gsvc-badge active">Active</span></div>
         </div>
       </div>
