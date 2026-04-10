@@ -328,6 +328,44 @@ def health_check():
     })
 
 
+@app.route("/api/google-services", methods=["GET"])
+def api_google_services():
+    """Return status of all Google services integrated into VenueFlow."""
+    return jsonify({
+        "services": [
+            {
+                "name": "Google Gemini 1.5 Flash",
+                "category": "AI / Generative",
+                "status": "active" if gemini_model is not None else "unconfigured",
+                "description": "Powers the AI Concierge for natural-language venue queries.",
+                "sdk": "google-generativeai",
+            },
+            {
+                "name": "Google Analytics 4",
+                "category": "Analytics",
+                "status": "active",
+                "description": "Tracks page views, tab navigation, and AI concierge interactions.",
+                "measurement_id": "G-VENUEFLOW01",
+            },
+            {
+                "name": "Google Maps Embed API",
+                "category": "Maps",
+                "status": "active",
+                "description": "Displays the venue location on the Venue Map tab.",
+            },
+            {
+                "name": "Google Fonts (Inter + Outfit)",
+                "category": "Web Fonts",
+                "status": "active",
+                "description": "Provides the Inter and Outfit typefaces for the UI.",
+            },
+        ],
+        "total": 4,
+        "active": 3 if gemini_model is None else 4,
+        "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00","Z"),
+    })
+
+
 @app.route("/api/crowd", methods=["GET"])
 def api_crowd():
     """Return crowd density data for all venue zones."""
