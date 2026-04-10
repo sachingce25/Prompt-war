@@ -296,7 +296,7 @@ def test_google_services_endpoint(client):
     names = [s["name"] for s in data["services"]]
     assert any("Gemini" in n for n in names)
     assert any("Analytics" in n for n in names)
-    assert any("Maps" in n for n in names)
+    assert any("Maps" in n or "maps" in n for n in names)
     assert any("Fonts" in n for n in names)
 
     for svc in data["services"]:
@@ -309,5 +309,28 @@ def test_google_services_endpoint(client):
 def test_google_services_security_headers(client):
     """Google services endpoint also has security headers."""
     resp = client.get("/api/google-services")
+    assert resp.headers.get("X-Content-Type-Options") == "nosniff"
+    assert "no-store" in resp.headers.get("Cache-Control", "")
+
+
+def test_maps_config_endpoint(client):
+    """GET /api/maps-config returns venue coordinates."""
+    resp = client.get("/api/maps-config")
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert "enabled" in data
+    assert "venue" in data
+    venue = data["venue"]
+    assert "lat" in venue
+    assert "lng" in venue
+    assert "zoom" in venue
+    assert "name" in venue
+    assert isinstance(venue["lat"], float)
+    assert isinstance(venue["lng"], float)
+
+
+def test_maps_config_security_headers(client):
+    """Maps config endpoint also returns security headers."""
+    resp = client.get("/api/maps-config")
     assert resp.headers.get("X-Content-Type-Options") == "nosniff"
     assert "no-store" in resp.headers.get("Cache-Control", "")
