@@ -1,7 +1,7 @@
 /* ============================================================
    VenueFlow — Mission Control Design System
    ============================================================ */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+/* Google Fonts loaded via <link> in index.html for performance */
 
 :root {
   --bg-deep: #050810;
@@ -407,6 +407,50 @@ body {
 }
 .skeleton-text { height: 14px; margin-bottom: 8px; border-radius: 4px; }
 .skeleton-block { height: 80px; }
+
+/* ---- Google Services Bar ---- */
+.google-services-bar {
+  display: flex; align-items: center; gap: 6px;
+}
+.gsvc-chip {
+  padding: 3px 10px; border-radius: var(--radius-pill); font-size: .65rem;
+  font-weight: 600; background: rgba(66,133,244,0.12); border: 1px solid rgba(66,133,244,0.25);
+  color: #4285f4; letter-spacing: .3px; white-space: nowrap;
+}
+.gsvc-chip.gemini-chip { background: rgba(67,97,255,0.12); border-color: rgba(67,97,255,0.3); color: var(--accent2); }
+.gsvc-chip.gemini-chip.active { background: rgba(34,229,160,0.12); border-color: rgba(34,229,160,0.4); color: var(--cool); }
+
+/* ---- Google Maps Container ---- */
+.google-maps-container { overflow: hidden; padding: 16px; }
+.google-maps-container iframe { display: block; }
+
+/* ---- Gemini Status Indicator ---- */
+.gemini-status-indicator {
+  display: flex; align-items: center; gap: 6px;
+  font-size: .7rem; color: var(--muted);
+}
+.gemini-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--muted); flex-shrink: 0;
+}
+.gemini-dot.active {
+  background: var(--cool);
+  animation: heartbeat 1.5s ease-in-out infinite;
+}
+
+/* ---- Google Services Card (My Plan sidebar) ---- */
+.google-services-card .gsvc-list { display: flex; flex-direction: column; gap: 8px; }
+.gsvc-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: .78rem; color: var(--muted);
+}
+.gsvc-row span:nth-child(2) { flex: 1; }
+.gsvc-badge {
+  padding: 2px 8px; border-radius: var(--radius-pill); font-size: .6rem;
+  font-weight: 700; background: rgba(255,255,255,0.06); color: var(--muted);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.gsvc-badge.active { background: rgba(34,229,160,0.15); color: var(--cool); border-color: rgba(34,229,160,0.3); }
 
 /* ---- Responsive ---- */
 @media (max-width: 1024px) {
