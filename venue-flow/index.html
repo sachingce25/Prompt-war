@@ -16,10 +16,14 @@
     gtag('config', 'G-VENUEFLOW01', { page_title: 'VenueFlow Dashboard', send_page_view: true });
   </script>
 
-  <!-- Google Fonts -->
+  <!-- Google Charts -->
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+
+  <!-- Google Fonts + Material Symbols -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
 
   <link rel="stylesheet" href="styles.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏟️</text></svg>">
@@ -60,10 +64,12 @@
   </div>
   <div style="display:flex;align-items:center;gap:16px;">
     <div class="google-services-bar" aria-label="Powered by Google services">
-      <span class="gsvc-chip" title="Google Analytics active">📊 Analytics</span>
+      <span class="gsvc-chip" title="Google Analytics 4 active">📊 Analytics</span>
       <span class="gsvc-chip gemini-chip" id="geminiStatusChip" title="Google Gemini AI status">✨ Gemini</span>
       <span class="gsvc-chip" title="Google Fonts active">Aa Fonts</span>
       <span class="gsvc-chip" title="Google Maps active">🗺 Maps</span>
+      <span class="gsvc-chip" title="Google Charts active">📈 Charts</span>
+      <span class="gsvc-chip" title="Material Symbols active"><span class="material-symbols-rounded" style="font-size:13px;vertical-align:middle">widgets</span> Icons</span>
     </div>
     <span style="color:var(--muted);font-size:.8rem;" aria-label="Current event: Apex Arena — Championship Finals">Apex Arena — Championship Finals</span>
     <div class="live-badge" role="status" aria-label="Live data feed active"><span class="live-dot" aria-hidden="true"></span> LIVE</div>
@@ -151,6 +157,21 @@
     <div>
       <h2 class="section-title">⏱️ Wait Times</h2>
       <div id="dashWaits" class="wait-list" role="list" aria-label="Current facility wait times" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <!-- Google Charts — Zone Analytics -->
+  <div class="charts-section">
+    <h2 class="section-title">📈 Live Zone Analytics — Powered by Google Charts</h2>
+    <div class="charts-row">
+      <div class="chart-card glass" role="region" aria-label="Crowd density by zone bar chart">
+        <div class="chart-label">Crowd Density by Zone</div>
+        <div id="gChartCrowd" style="width:100%;height:220px;" aria-label="Google column chart: crowd density per zone"></div>
+      </div>
+      <div class="chart-card glass" role="region" aria-label="Facility wait times chart">
+        <div class="chart-label">Facility Wait Times (min)</div>
+        <div id="gChartWait" style="width:100%;height:220px;" aria-label="Google bar chart: wait times per facility"></div>
+      </div>
     </div>
   </div>
 </section>
@@ -286,7 +307,9 @@
           <div class="gsvc-row"><span>🤖</span><span>Gemini 2.0 Flash AI</span><span class="gsvc-badge" id="geminiCardBadge">—</span></div>
           <div class="gsvc-row"><span>📊</span><span>Google Analytics 4</span><span class="gsvc-badge active">Active</span></div>
           <div class="gsvc-row"><span>🗺</span><span>Google Maps JS API</span><span class="gsvc-badge active">Active</span></div>
-          <div class="gsvc-row"><span>Aa</span><span>Google Fonts (Inter)</span><span class="gsvc-badge active">Active</span></div>
+          <div class="gsvc-row"><span>Aa</span><span>Google Fonts (Inter + Outfit)</span><span class="gsvc-badge active">Active</span></div>
+          <div class="gsvc-row"><span>📈</span><span>Google Charts</span><span class="gsvc-badge active">Active</span></div>
+          <div class="gsvc-row"><span><span class="material-symbols-rounded" style="font-size:14px">widgets</span></span><span>Material Symbols</span><span class="gsvc-badge active">Active</span></div>
         </div>
       </div>
     </aside>
