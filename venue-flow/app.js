@@ -185,6 +185,8 @@ async function fetchCrowdData() {
     const r = await fetch(`${API_BASE}/api/crowd`);
     crowdData = await r.json();
     renderDashboard();
+    // Update Google Chart with real zone data
+    drawGChartCrowd(crowdData.zones);
     return crowdData;
   } catch (e) { console.error('Crowd fetch error:', e); }
 }
@@ -198,6 +200,9 @@ async function fetchWaitData() {
     if (waitData.alerts) {
       waitData.alerts.forEach(a => showToast(`⚡ ${a.message}`, 'success'));
     }
+    // Update Google Chart with real wait data — flatten all categories
+    const allWaits = Object.values(waitData.waits).flat().map(w => ({ name: w.name, wait: w.wait }));
+    drawGChartWait(allWaits.slice(0, 6)); // show top 6 for readability
     return waitData;
   } catch (e) { console.error('Wait fetch error:', e); }
 }
@@ -746,6 +751,116 @@ async function checkGeminiStatus() {
   } catch (e) {
     console.warn('[VenueFlow] Could not fetch Google Services status:', e);
   }
+}
+
+// ============================================================
+// GOOGLE CHARTS — Crowd & Wait Time Visualizations
+// ============================================================
+let gChartsReady = false;
+
+// Load Google Charts with Material design package
+google.charts.load('current', { packages: ['corechart', 'bar'] });
+google.charts.setOnLoadCallback(() => {
+  gChartsReady = true;
+  // Draw with placeholder data immediately; real data fills in on fetchAll
+  drawGChartCrowd(null);
+  drawGChartWait(null);
+});
+
+/**
+ * Draw or update the crowd-density column chart.
+ * @param {Object|null} zonesData - Zones object from /api/crowd, or null for placeholder
+ */
+function drawGChartCrowd(zonesData) {
+  if (!gChartsReady) return;
+  const el = document.getElementById('gChartCrowd');
+  if (!el) return;
+
+  const rows = zonesData
+    ? Object.entries(zonesData).map(([z, info]) => [
+        `Zone ${z}`, info.crowd_pct,
+        info.crowd_pct < 30 ? '#00d4ff' : info.crowd_pct < 60 ? '#f4a100' : '#ff5c38',
+        `Zone ${z}: ${info.crowd_pct}%`
+      ])
+    : [['A',22,'#00d4ff','Zone A: 22%'],['B',54,'#f4a100','Zone B: 54%'],['C',78,'#ff5c38','Zone C: 78%'],
+       ['D',41,'#f4a100','Zone D: 41%'],['E',18,'#00d4ff','Zone E: 18%'],['F',63,'#ff5c38','Zone F: 63%']];
+
+  const data = new google.visualization.DataTable();
+  data.addColumn('string', 'Zone');
+  data.addColumn('number', 'Crowd %');
+  data.addColumn({ type: 'string', role: 'style' });
+  data.addColumn({ type: 'string', role: 'tooltip' });
+  data.addRows(rows);
+
+  const options = {
+    backgroundColor: 'transparent',
+    chartArea: { left: 40, right: 16, top: 12, bottom: 40, width: '100%', height: '80%' },
+    legend: { position: 'none' },
+    hAxis: { textStyle: { color: '#8892b0', fontSize: 11 }, gridlines: { color: 'transparent' } },
+    vAxis: {
+      minValue: 0, maxValue: 100,
+      textStyle: { color: '#8892b0', fontSize: 10 },
+      gridlines: { color: 'rgba(255,255,255,0.04)' },
+      baselineColor: 'rgba(255,255,255,0.08)'
+    },
+    animation: { startup: true, duration: 800, easing: 'out' },
+    enableInteractivity: true,
+    tooltip: { isHtml: false },
+    bar: { groupWidth: '60%' }
+  };
+
+  const chart = new google.visualization.ColumnChart(el);
+  chart.draw(data, options);
+
+  // Track GA4 chart render
+  trackEvent('google_chart_rendered', { chart_type: 'crowd_column', event_category: 'google_services' });
+}
+
+/**
+ * Draw or update the wait-times horizontal bar chart.
+ * @param {Array|null} waitsData - Array of {name, wait} from /api/waits, or null for placeholder
+ */
+function drawGChartWait(waitsData) {
+  if (!gChartsReady) return;
+  const el = document.getElementById('gChartWait');
+  if (!el) return;
+
+  const rows = waitsData
+    ? waitsData.map(w => [w.name, w.wait,
+        w.wait <= 5 ? '#00d4ff' : w.wait <= 12 ? '#f4a100' : '#ff5c38',
+        `${w.name}: ${w.wait} min`])
+    : [['Burger Blitz',18,'#ff5c38','Burger Blitz: 18 min'],
+       ['Noodle Bar',6,'#00d4ff','Noodle Bar: 6 min'],
+       ['Pizza Corner',11,'#f4a100','Pizza Corner: 11 min'],
+       ['Restroom E-F',4,'#00d4ff','Restroom E-F: 4 min']];
+
+  const data = new google.visualization.DataTable();
+  data.addColumn('string', 'Facility');
+  data.addColumn('number', 'Wait (min)');
+  data.addColumn({ type: 'string', role: 'style' });
+  data.addColumn({ type: 'string', role: 'tooltip' });
+  data.addRows(rows);
+
+  const options = {
+    backgroundColor: 'transparent',
+    chartArea: { left: 100, right: 32, top: 12, bottom: 24, width: '100%', height: '82%' },
+    legend: { position: 'none' },
+    hAxis: {
+      textStyle: { color: '#8892b0', fontSize: 10 },
+      gridlines: { color: 'rgba(255,255,255,0.04)' },
+      baselineColor: 'rgba(255,255,255,0.08)'
+    },
+    vAxis: { textStyle: { color: '#8892b0', fontSize: 11 } },
+    animation: { startup: true, duration: 800, easing: 'out' },
+    enableInteractivity: true,
+    bar: { groupWidth: '55%' }
+  };
+
+  const chart = new google.visualization.BarChart(el);
+  chart.draw(data, options);
+
+  // Track GA4 chart render
+  trackEvent('google_chart_rendered', { chart_type: 'wait_bar', event_category: 'google_services' });
 }
 
 // ============================================================
