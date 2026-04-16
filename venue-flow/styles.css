@@ -579,6 +579,31 @@ body {
 .park-avail.warn { background: rgba(255,170,0,0.12); color: var(--warm); }
 .park-avail.full { background: rgba(255,92,56,0.12); color: var(--hot); }
 
+/* ---- Google Charts Section ---- */
+.charts-section { margin-top: 28px; }
+.charts-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.chart-card {
+  padding: 16px 16px 12px;
+  border-radius: var(--radius);
+  min-height: 260px;
+  display: flex; flex-direction: column;
+}
+.chart-label {
+  font-family: 'Outfit', sans-serif;
+  font-size: .75rem; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 8px;
+}
+
+/* ---- Material Symbols ---- */
+.material-symbols-rounded {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 20;
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 1024px) {
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
@@ -600,6 +625,7 @@ body {
   .exit-step::after { display: none; }
   .chat-layout { height: 70vh; }
   .score-row { grid-template-columns: 1fr; }
+  .charts-row { grid-template-columns: 1fr; }
   .ticker-bar { height: 28px; }
   .ticker-inner { font-size: .65rem; }
   .google-services-bar { display: none; }
